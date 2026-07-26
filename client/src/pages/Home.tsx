@@ -7,6 +7,7 @@
 
 import { useState, useMemo, useCallback } from "react";
 import { ShieldCheck, Star, Clock, Award, ArrowDown, Wrench, Zap, Building2, Paintbrush } from "lucide-react";
+import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import FilterPills from "@/components/FilterPills";
@@ -28,6 +29,13 @@ const TRADE_ICONS: Record<string, React.ReactNode> = {
 };
 
 export default function Home() {
+  // The useAuth hook provides authentication state.
+  // To implement login/logout, call logout(), or start login from an event
+  // handler: onClick={() => startLogin()} (imported from "@/const"). Never call
+  // startLogin() during render (no href={startLogin()}) — it mints a one-time
+  // nonce cookie and must run only at the moment of navigation.
+  let { user, loading, error, isAuthenticated, logout } = useAuth();
+
   const [activeSection, setActiveSection] = useState("catalogo");
   const [query, setQuery] = useState("");
   const [activeFilter, setActiveFilter] = useState<Trade>("Todos");
