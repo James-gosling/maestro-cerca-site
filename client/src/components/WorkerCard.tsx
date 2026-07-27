@@ -12,6 +12,7 @@ interface WorkerCardProps {
   onViewProfile: () => void;
   onContact: () => void;
   index: number;
+  distanceKm?: string | null;
 }
 
 const availabilityConfig = {
@@ -20,7 +21,7 @@ const availabilityConfig = {
   "Ocupado": { color: "text-gray-400", dot: "bg-gray-400", label: "Ocupado" },
 } as const;
 
-export default function WorkerCard({ worker, onViewProfile, onContact, index }: WorkerCardProps) {
+export default function WorkerCard({ worker, onViewProfile, onContact, index, distanceKm }: WorkerCardProps) {
   const avail = availabilityConfig[worker.availability];
 
   return (
@@ -95,11 +96,19 @@ export default function WorkerCard({ worker, onViewProfile, onContact, index }: 
           <span>{worker.completedJobs} trabajos completados</span>
         </div>
 
-        {/* Location & Availability */}
+        {/* Location, Distance & Availability */}
         <div className="flex items-center justify-between text-xs mt-auto">
-          <div className="flex items-center gap-1 text-muted-foreground">
-            <MapPin size={13} className="text-muted-foreground/50 flex-shrink-0" />
-            <span>{worker.location}</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 text-muted-foreground">
+              <MapPin size={13} className="text-muted-foreground/50 flex-shrink-0" />
+              <span>{worker.location}</span>
+            </div>
+            {distanceKm && (
+              <span className="bg-terracotta/8 text-terracotta text-[11px] font-semibold px-2 py-0.5 rounded-full border border-terracotta/15 flex items-center gap-1">
+                <MapPin size={10} className="text-terracotta" />
+                {distanceKm}
+              </span>
+            )}
           </div>
           <div className={`flex items-center gap-1.5 font-medium ${avail.color}`}>
             <div className={`w-2 h-2 rounded-full flex-shrink-0 ${avail.dot}`} />

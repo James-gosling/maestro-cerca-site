@@ -6,6 +6,46 @@ import { storagePut } from "../storage";
 import { publicProcedure, router } from "../_core/trpc";
 
 /**
+ * Haversine formula: calculate distance in km between two lat/lng points.
+ * Used server-side for radius filtering.
+ */
+function haversineKm(
+  lat1: number, lon1: number,
+  lat2: number, lon2: number
+): number {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+/**
+ * Geocode a zone/neighborhood name to lat/lng using Google Maps Geocoding API.
+ * Used to geocode user's location for radius search.
+ */
+async function geocodeLocation(query: string): Promise<{ lat: number; lng: number } | null> {
+  try {
+    const { makeRequest } = await import("../_core/map");
+    const data = await makeRequest<{ results?: Array<{ geometry: { location: { lat: number; lng: number } } }> }>(
+      "/maps/api/geocode/json",
+      { address: `${query}, Ciudad de México, México` }
+    );
+    if (data.results && data.results.length > 0) {
+      const loc = data.results[0].geometry.location;
+      return { lat: loc.lat, lng: loc.lng };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Generate a URL-safe slug from a maestro name.
  * e.g. "Don Chucho Ramírez" → "don-chucho-ramirez"
  */
@@ -88,6 +128,8 @@ export const maestrosRouter = router({
           )
           .optional(),
         idDocumentKey: z.string().optional(),
+        latitude: z.number().optional(),
+        longitude: z.number().optional(),
       })
     )
     .mutation(async ({ input }) => {
@@ -105,6 +147,8 @@ export const maestrosRouter = router({
           ? input.galleryImages
           : null,
         idDocumentKey: input.idDocumentKey,
+        latitude: input.latitude,
+        longitude: input.longitude,
         verificationStatus: "approved",
       };
 
@@ -161,4 +205,70 @@ export const maestrosRouter = router({
         : [],
     }));
   }),
+
+  /**
+   * Geocode a user's location and return lat/lng.
+   * Used by the frontend to get coordinates for radius filtering.
+   */
+  geocode: publicProcedure
+    .input(
+      z.object({
+        query: z.string().min(2),
+      })
+    )
+    .query(async ({ input }) => {
+      const coords = await geocodeLocation(input.query);
+      return coords;
+    }),
+
+  /**
+   * Search maestros within a radius of given coordinates.
+   * Returns results sorted by distance (nearest first) with distance_km included.
+   */
+  searchByRadius: publicProcedure
+    .input(
+      z.object({
+        lat: z.number().min(-90).max(90),
+        lng: z.number().min(-180).max(180),
+        radiusKm: z.number().min(1).max(200).default(10),
+        trade: z.string().optional(),
+      })
+    )
+    .query(async ({ input }) => {
+      const db = await getDb();
+      if (!db) return [];
+
+      const conditions = [
+        eq(maestros.verificationStatus, "approved"),
+      ];
+
+      if (input.trade && input.trade !== "Todos") {
+        conditions.push(eq(maestros.trade, input.trade));
+      }
+
+      const rows = await db
+        .select()
+        .from(maestros)
+        .where(and(...conditions));
+
+      // Filter by radius using Haversine and enrich with distance
+      const results = rows
+        .filter((row) => row.latitude != null && row.longitude != null)
+        .map((row) => ({
+          ...row,
+          slug: `${slugify(row.name)}-${row.id}`,
+          profileUrl: `/maestro/${slugify(row.name)}-${row.id}`,
+          galleryImages: row.galleryImages
+            ? (row.galleryImages as { url: string; caption: string; key: string }[])
+            : [],
+          distanceKm: haversineKm(
+            input.lat, input.lng,
+            row.latitude!, row.longitude!
+          ),
+        }))
+        .filter((row) => row.distanceKm <= input.radiusKm)
+        .sort((a, b) => a.distanceKm - b.distanceKm);
+
+      return results;
+    }),
 });

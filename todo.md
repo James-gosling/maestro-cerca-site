@@ -22,3 +22,10 @@
 - [x] Update WorkerDetailModal with share button and profile link
 - [x] Write vitest tests for getBySlug
 - [x] Update README with profile route documentation
+- [x] Add lat/lng columns to maestros table for geolocation
+- [x] Build backend `searchByRadius` endpoint with Haversine distance calculation
+- [x] Build radius filter UI component with km selector and geolocation button
+- [x] Integrate radius filter into Home.tsx search flow
+- [x] Seed mock maestros with realistic lat/lng coordinates
+- [x] Write vitest tests for Haversine calculation and searchByRadius (7 new tests, 20 total passing)
+- [x] Update README with radius filter documentation

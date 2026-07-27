@@ -1,4 +1,4 @@
-import { int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
+import { double, float, int, json, mysqlEnum, mysqlTable, text, timestamp, varchar } from "drizzle-orm/mysql-core";
 
 /**
  * Core user table backing auth flow.
@@ -34,6 +34,10 @@ export const maestros = mysqlTable("maestros", {
   galleryImages: json("galleryImages"),
   verificationStatus: mysqlEnum("verificationStatus", ["pending", "approved", "rejected"]).default("pending"),
   idDocumentKey: text("idDocumentKey"),
+  /** Latitude for geolocation radius search */
+  latitude: float("latitude"),
+  /** Longitude for geolocation radius search */
+  longitude: float("longitude"),
   createdAt: timestamp("createdAt").defaultNow().notNull(),
   updatedAt: timestamp("updatedAt").defaultNow().onUpdateNow().notNull(),
 });

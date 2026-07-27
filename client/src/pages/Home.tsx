@@ -6,7 +6,7 @@
  */
 
 import { useState, useMemo, useCallback } from "react";
-import { ShieldCheck, Star, Clock, Award, ArrowDown, Wrench, Zap, Building2, Paintbrush } from "lucide-react";
+import { ShieldCheck, Star, Clock, Award, ArrowDown, Wrench, Zap, Building2, Paintbrush, MapPin } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
@@ -16,6 +16,7 @@ import WorkerDetailModal from "@/components/WorkerDetailModal";
 import OnboardingWizard from "@/components/OnboardingWizard";
 import PricingComparison from "@/components/PricingComparison";
 import EmptyState from "@/components/EmptyState";
+import RadiusFilter from "@/components/RadiusFilter";
 import { MAESTROS, type Maestro, type Trade } from "@/data/mockMaestros";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
@@ -44,8 +45,49 @@ export default function Home() {
   const [selectedWorker, setSelectedWorker] = useState<Maestro | null>(null);
   const [onboardingOpen, setOnboardingOpen] = useState(false);
 
+  // ── Radius filter state ──
+  const [userLocation, setUserLocation] = useState<{ lat: number; lng: number } | null>(null);
+  const [radiusKm, setRadiusKm] = useState(10);
+  const [isSearchingRadius, setIsSearchingRadius] = useState(false);
+
+  // Seed mock maestros with realistic CDMX zone coordinates
+  const MAESTROS_WITH_COORDS: (Maestro & { lat?: number; lng?: number })[] = useMemo(() => {
+    // Realistic lat/lng for each zone in CDMX
+    const zoneCoords: Record<string, { lat: number; lng: number }> = {
+      "Iztapalapa": { lat: 19.3568, lng: -99.0578 },
+      "Coyoacán": { lat: 19.3467, lng: -99.1618 },
+      "Nezahualcóyotl": { lat: 19.4009, lng: -99.0143 },
+      "Gustavo A. Madero": { lat: 19.4876, lng: -99.1104 },
+      "Tlalpan": { lat: 19.2969, lng: -99.1718 },
+      "Tlahuac": { lat: 19.2854, lng: -99.0164 },
+      "Venustiano Carranza": { lat: 19.4332, lng: -99.1046 },
+      "Benito Juárez": { lat: 19.3769, lng: -99.1583 },
+    };
+    return MAESTROS.map((m) => ({
+      ...m,
+      lat: zoneCoords[m.location]?.lat,
+      lng: zoneCoords[m.location]?.lng,
+    }));
+  }, []);
+
+  // Haversine distance calculation (frontend mirror of server function)
+  const haversineKm = useCallback((
+    lat1: number, lon1: number,
+    lat2: number, lon2: number
+  ): number => {
+    const R = 6371;
+    const dLat = ((lat2 - lat1) * Math.PI) / 180;
+    const dLon = ((lon2 - lon1) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) ** 2 +
+      Math.cos((lat1 * Math.PI) / 180) *
+        Math.cos((lat2 * Math.PI) / 180) *
+        Math.sin(dLon / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  }, []);
+
   const filteredMaestros = useMemo(() => {
-    let results = MAESTROS;
+    let results = MAESTROS_WITH_COORDS;
     if (activeFilter !== "Todos") {
       results = results.filter((m) => m.tradeCategory === activeFilter);
     }
@@ -60,8 +102,43 @@ export default function Home() {
           m.skills.some((s) => s.toLowerCase().includes(q))
       );
     }
+    // Apply radius filter if user has a location
+    if (userLocation) {
+      results = results
+        .filter((m) => m.lat && m.lng)
+        .map((m) => ({
+          ...m,
+          _distance: haversineKm(
+            userLocation.lat, userLocation.lng,
+            m.lat!, m.lng!
+          ),
+        }))
+        .filter((m) => m._distance <= radiusKm)
+        .sort((a, b) => a._distance - b._distance);
+    }
     return results;
-  }, [query, activeFilter]);
+  }, [query, activeFilter, userLocation, radiusKm, MAESTROS_WITH_COORDS, haversineKm]);
+
+  const handleLocationChange = useCallback((location: { lat: number; lng: number } | null, _label: string) => {
+    setUserLocation(location);
+    setIsSearchingRadius(true);
+    // Simulate search delay for UX feedback
+    setTimeout(() => setIsSearchingRadius(false), 600);
+  }, []);
+
+  const handleRadiusChange = useCallback((radius: number) => {
+    setRadiusKm(radius);
+    setIsSearchingRadius(true);
+    setTimeout(() => setIsSearchingRadius(false), 400);
+  }, []);
+
+  // Calculate distance for a maestro for display
+  const getDistanceKm = useCallback((worker: Maestro & { lat?: number; lng?: number }): string | null => {
+    if (!userLocation || !worker.lat || !worker.lng) return null;
+    const km = haversineKm(userLocation.lat, userLocation.lng, worker.lat, worker.lng);
+    if (km < 1) return `${Math.round(km * 1000)} m`;
+    return `${km.toFixed(1)} km`;
+  }, [userLocation, haversineKm]);
 
   const navigateToSection = useCallback((id: string) => {
     setActiveSection(id);
@@ -196,12 +273,23 @@ export default function Home() {
             </div>
           </div>
 
-          <FilterPills
-            activeFilter={activeFilter}
-            setActiveFilter={setActiveFilter}
-            maestros={filteredMaestros}
-            allMaestros={MAESTROS}
-          />
+          {/* ── Radius Filter ── */}
+          <div className="grid grid-cols-1 lg:grid-cols-[280px_1fr] gap-6 mb-6">
+            <RadiusFilter
+              userLocation={userLocation}
+              onLocationChange={handleLocationChange}
+              onRadiusChange={handleRadiusChange}
+              radiusKm={radiusKm}
+              resultCount={filteredMaestros.length}
+              isSearching={isSearchingRadius}
+            />
+            <FilterPills
+              activeFilter={activeFilter}
+              setActiveFilter={setActiveFilter}
+              maestros={filteredMaestros}
+              allMaestros={MAESTROS}
+            />
+          </div>
 
           {/* Results Grid — varied card sizes for masonry feel */}
           <div className="mt-8">
@@ -212,6 +300,7 @@ export default function Home() {
                     key={worker.id}
                     worker={worker}
                     index={i}
+                    distanceKm={getDistanceKm(worker)}
                     onViewProfile={() => navigateToProfile(worker)}
                     onContact={() => setSelectedWorker(worker)}
                   />

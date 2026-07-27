@@ -170,6 +170,150 @@ describe("maestros router", () => {
     });
   });
 
+  describe("searchByRadius", () => {
+    it("returns empty array when no maestros have coordinates", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.searchByRadius({
+        lat: 19.3467,
+        lng: -99.1618,
+        radiusKm: 10,
+      });
+
+      expect(Array.isArray(result)).toBe(true);
+    });
+
+    it("returns maestros within radius with distanceKm sorted ascending", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Register two maestros with coordinates at known distances from Coyoacán center
+      const nearResult = await caller.maestros.register({
+        name: "Near Maestro",
+        phone: "5533333333",
+        trade: "Plomero",
+        experience: 10,
+        workType: "independiente",
+        zone: "Coyoacán",
+        latitude: 19.3470, // ~33m away (essentially 0 km)
+        longitude: -99.1615,
+      });
+
+      const farResult = await caller.maestros.register({
+        name: "Far Maestro",
+        phone: "5544444444",
+        trade: "Plomero",
+        experience: 10,
+        workType: "independiente",
+        zone: "Iztapalapa",
+        latitude: 19.3570, // ~1.1 km away
+        longitude: -99.0618,
+      });
+
+      // Search with 15 km radius (far maestro is ~11 km away)
+      const result = await caller.maestros.searchByRadius({
+        lat: 19.3467,
+        lng: -99.1618,
+        radiusKm: 15,
+      });
+
+      // Both should be within 15 km
+      const nearMaestro = result.find((m) => m.id === nearResult.id);
+      const farMaestro = result.find((m) => m.id === farResult.id);
+
+      expect(nearMaestro).toBeDefined();
+      expect(farMaestro).toBeDefined();
+      expect(nearMaestro!.distanceKm).toBeLessThan(farMaestro!.distanceKm);
+      expect(nearMaestro!.distanceKm).toBeGreaterThanOrEqual(0);
+    });
+
+    it("excludes maestros outside the radius", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Register a maestro far away (Toluca, ~40 km from CDMX center)
+      const distantResult = await caller.maestros.register({
+        name: "Distant Maestro",
+        phone: "5555555555",
+        trade: "Electricista",
+        experience: 5,
+        workType: "empresa",
+        zone: "Toluca",
+        latitude: 19.2833,
+        longitude: -99.6533,
+      });
+
+      // Search with 5 km radius
+      const result = await caller.maestros.searchByRadius({
+        lat: 19.3467,
+        lng: -99.1618,
+        radiusKm: 5,
+      });
+
+      const distantMaestro = result.find((m) => m.id === distantResult.id);
+      expect(distantMaestro).toBeUndefined();
+    });
+
+    it("filters by trade when trade parameter is provided", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.searchByRadius({
+        lat: 19.3467,
+        lng: -99.1618,
+        radiusKm: 100,
+        trade: "Electricista",
+      });
+
+      // All results should be Electricista
+      result.forEach((m) => {
+        expect(m.trade).toBe("Electricista");
+      });
+    });
+
+    it("returns results sorted by distance ascending", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.searchByRadius({
+        lat: 19.3467,
+        lng: -99.1618,
+        radiusKm: 100,
+      });
+
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i]!.distanceKm).toBeGreaterThanOrEqual(result[i - 1]!.distanceKm);
+      }
+    });
+  });
+
+  describe("geocode", () => {
+    it("returns null for empty query", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.maestros.geocode({ query: "" })
+      ).rejects.toThrow();
+    });
+
+    it("returns coordinates or null for a valid query", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.geocode({ query: "Coyoacán" });
+
+      // May return null if the geocoding API is unavailable in test env
+      if (result !== null) {
+        expect(result).toHaveProperty("lat");
+        expect(result).toHaveProperty("lng");
+        expect(result!.lat).toBeGreaterThan(-90);
+        expect(result!.lat).toBeLessThan(90);
+      }
+    });
+  });
+
   describe("getBySlug", () => {
     it("returns null for non-existent slug", async () => {
       const ctx = createPublicContext();

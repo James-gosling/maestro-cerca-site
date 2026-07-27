@@ -73,13 +73,13 @@ client/src/
 
 server/
 ├── routers/
-│   └── maestros.ts              # register, uploadPhoto, list, getBySlug procedures
+│   └── maestros.ts              # register, uploadPhoto, list, getBySlug, searchByRadius, geocode
 ├── storage.ts                   # S3 helpers (storagePut, storageGet)
-├── maestros.test.ts             # Vitest coverage (12 tests)
+├── maestros.test.ts             # Vitest coverage (20 tests)
 └── db.ts                        # Drizzle query helpers
 
 drizzle/
-└── schema.ts                    # maestros table with galleryImages JSON column
+└── schema.ts                    # maestros table with galleryImages, latitude, longitude columns
 ```
 
 ## Quick Start
@@ -175,6 +175,39 @@ Example: "Don Chucho Ramírez" (id: 5) → `don-chucho-ramirez-5`
 3. MaestroProfile.tsx fetches data via `trpc.maestros.getBySlug.useQuery`
 4. Profile page renders with share + WhatsApp CTAs
 5. WorkerDetailModal also has a "Perfil completo" button linking to the same route
+
+## Location Radius Filter
+
+Clients can search for maestros within a specific distance using the `RadiusFilter` component. It supports three location input methods:
+
+| Method | How It Works | Fallback |
+|--------|-------------|----------|
+| **GPS Button** | Uses `navigator.geolocation.getCurrentPosition()` | Shows toast error if denied or unavailable |
+| **Manual Location** | Typeahead geocoding via `maestros.geocode` → Google Maps Geocoding API | Falls back to zone matching |
+| **Preset Radii** | Quick-select 5 km, 10 km, 25 km, 50 km | Always available |
+
+### How Distance Filtering Works
+
+1. Client sets location (GPS or manual) and selects a radius
+2. `RadiusFilter` emits `onLocationChange` with `{ lat, lng, radiusKm }`
+3. `Home.tsx` switches from `maestros.list` to `maestros.searchByRadius`
+4. Backend applies Haversine formula to filter and sort by distance
+5. Each `WorkerCard` displays a distance badge (e.g., "3.4 km")
+
+### Distance Calculation
+
+The server-side `haversineKm()` function in `server/routers/maestros.ts`:
+- Uses Earth radius of 6,371 km
+- Computes great-circle distance between user coords and each maestro's stored `latitude`/`longitude`
+- Filters out maestros without coordinates (graceful degradation)
+- Returns results sorted by ascending distance
+
+### WorkerCard Distance Badge
+
+When `distanceKm` is provided, the WorkerCard renders a terracotta-tinted badge in the location row:
+- `< 1 km` → shown in meters (e.g., "340 m")
+- `>= 1 km` → shown in kilometers (e.g., "3.4 km")
+- Clicking the badge clears the location filter
 
 ## Tech Stack
 
