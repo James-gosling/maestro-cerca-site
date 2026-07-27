@@ -48,6 +48,7 @@ Workers can now upload real project photos during registration. The OnboardingWi
 | `maestros.register` | Mutation | Register new worker with optional gallery |
 | `maestros.uploadPhoto` | Mutation | Upload single photo to S3 (base64 input) |
 | `maestros.list` | Query | List all approved maestros |
+| `maestros.getBySlug` | Query | Get maestro by URL slug (format: `{name-slug}-{id}`) |
 
 ## Architecture
 
@@ -65,15 +66,16 @@ client/src/
 │   ├── PricingComparison.tsx    # Fixed feature matrix
 │   └── EmptyState.tsx           # Recovery CTAs for zero results
 ├── pages/
-│   └── Home.tsx                 # Asymmetric hero + all sections
+│   ├── Home.tsx                 # Asymmetric hero + all sections
+│   └── MaestroProfile.tsx       # Public profile page at /maestro/:slug
 ├── index.css                    # Design tokens (OKLCH color system)
 └── App.tsx                      # Router + ThemeProvider
 
 server/
 ├── routers/
-│   └── maestros.ts              # register, uploadPhoto, list procedures
+│   └── maestros.ts              # register, uploadPhoto, list, getBySlug procedures
 ├── storage.ts                   # S3 helpers (storagePut, storageGet)
-├── maestros.test.ts             # Vitest coverage (8 tests)
+├── maestros.test.ts             # Vitest coverage (12 tests)
 └── db.ts                        # Drizzle query helpers
 
 drizzle/
@@ -90,7 +92,7 @@ pnpm install
 pnpm dev
 
 # Run tests
-pnpm test          # 9 tests passing
+pnpm test          # 12 tests passing
 
 # TypeScript check
 pnpm check
@@ -141,12 +143,38 @@ The primary refactored component implementing the top audit recommendation:
 - **Lazy image loading** — performance optimized
 - **ARIA labels** — full accessibility support
 
-## Next Steps (Recommended)
+## Public Profile Route
 
-1. **WhatsApp deep-link** — Replace "Desbloquear" CTA with `wa.me/{phone}` link
-2. **Location radius filter** — Add "within X km" geo-search using the Map component
-3. **Admin review dashboard** — Add a pending-approval queue for new registrations
-4. **Worker profile page** — Dedicated `/maestro/:id` route with full gallery and reviews
+Each registered maestro has a shareable public profile at `/maestro/{slug}` (e.g., `/maestro/juan-perez-2`). The slug is generated server-side using the format `{name-slug}-{numeric-id}`.
+
+### How Slug Generation Works
+
+The `slugify` function in `server/routers/maestros.ts`:
+
+1. Converts the name to lowercase
+2. Normalizes Unicode (strips accents: Ramírez → ramirez)
+3. Replaces non-alphanumeric chars with hyphens
+4. Appends the numeric database ID to ensure uniqueness
+
+Example: "Don Chucho Ramírez" (id: 5) → `don-chucho-ramirez-5`
+
+### Profile Page Features
+
+- **Sticky header** with back button, MC seal, and share button
+- **Full gallery** with lightbox viewer (prev/next navigation)
+- **About section** with experience stats, verification status, work type
+- **WhatsApp CTA** — pre-filled message linking to `wa.me/{phone}`
+- **Share functionality** — native `navigator.share` with clipboard fallback
+- **404 state** — clean error page with "Volver al catálogo" CTA
+- **SEO title** — `document.title` set to `{name} — {trade} | Maestro Cerca`
+
+### Navigation Flow
+
+1. Client browses catalog → clicks "Ver Perfil" on any WorkerCard
+2. Home.tsx slugifies the worker's name and navigates to `/maestro/{slug}`
+3. MaestroProfile.tsx fetches data via `trpc.maestros.getBySlug.useQuery`
+4. Profile page renders with share + WhatsApp CTAs
+5. WorkerDetailModal also has a "Perfil completo" button linking to the same route
 
 ## Tech Stack
 

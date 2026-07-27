@@ -169,4 +169,87 @@ describe("maestros router", () => {
       expect(Array.isArray(result)).toBe(true);
     });
   });
+
+  describe("getBySlug", () => {
+    it("returns null for non-existent slug", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.getBySlug({ slug: "non-existent-999" });
+
+      expect(result).toBeNull();
+    });
+
+    it("rejects empty slug string", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.maestros.getBySlug({ slug: "" })
+      ).rejects.toThrow();
+    });
+
+    it("returns maestro with slug and profileUrl when found", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // First register a maestro to ensure there is data
+      const regResult = await caller.maestros.register({
+        name: "Slug Test Maestro",
+        phone: "5511111111",
+        trade: "Plomero",
+        experience: 10,
+        workType: "independiente",
+        zone: "Coyoacán",
+      });
+
+      const result = await caller.maestros.getBySlug({
+        slug: `slug-test-maestro-${regResult.id}`,
+      });
+
+      expect(result).not.toBeNull();
+      expect(result!.id).toBe(regResult.id);
+      expect(result!.name).toBe("Slug Test Maestro");
+      expect(result!.slug).toBe(`slug-test-maestro-${regResult.id}`);
+      expect(result!.profileUrl).toBe(`/maestro/slug-test-maestro-${regResult.id}`);
+    });
+
+    it("returns galleryImages as array when maestro has photos", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Upload a photo first
+      const uploadResult = await caller.maestros.uploadPhoto({
+        data: VALID_BASE64_JPEG,
+        fileName: "slug_gallery_test.jpg",
+        contentType: "image/jpeg",
+      });
+
+      // Register with gallery
+      const regResult = await caller.maestros.register({
+        name: "Gallery Maestro",
+        phone: "5522222222",
+        trade: "Electricista",
+        experience: 7,
+        workType: "independiente",
+        zone: "Roma Norte",
+        galleryImages: [
+          {
+            url: uploadResult.url,
+            caption: "Trabajo de prueba",
+            key: uploadResult.key,
+          },
+        ],
+      });
+
+      const result = await caller.maestros.getBySlug({
+        slug: `gallery-maestro-${regResult.id}`,
+      });
+
+      expect(result).not.toBeNull();
+      expect(Array.isArray(result!.galleryImages)).toBe(true);
+      expect(result!.galleryImages.length).toBe(1);
+      expect(result!.galleryImages[0].caption).toBe("Trabajo de prueba");
+    });
+  });
 });

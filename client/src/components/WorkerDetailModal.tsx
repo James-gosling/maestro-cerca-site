@@ -5,12 +5,14 @@
  */
 
 import { useState } from "react";
-import { X, Star, ShieldCheck, Clock, Briefcase, Phone, MapPin, ChevronLeft, ChevronRight } from "lucide-react";
+import { X, Star, ShieldCheck, Clock, Briefcase, Phone, MapPin, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import type { Maestro } from "@/data/mockMaestros";
+import { toast } from "sonner";
 
 interface WorkerDetailModalProps {
   worker: Maestro | null;
   onClose: () => void;
+  onOpenProfile?: () => void;
 }
 
 function Lightbox({ images, initialIndex, onClose }: { images: { url: string; caption: string }[]; initialIndex: number; onClose: () => void }) {
@@ -44,8 +46,24 @@ function Lightbox({ images, initialIndex, onClose }: { images: { url: string; ca
   );
 }
 
-export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModalProps) {
+export default function WorkerDetailModal({ worker, onClose, onOpenProfile }: WorkerDetailModalProps) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
+  const handleShareProfile = () => {
+    if (!worker) return;
+    const slug = worker.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    const url = `${window.location.origin}/maestro/${slug}-${worker.id}`;
+    if (navigator.share) {
+      navigator.share({ title: `${worker.name} — ${worker.trade}`, text: `Mira el perfil de ${worker.name} en Maestro Cerca`, url }).catch(() => {});
+    } else {
+      navigator.clipboard.writeText(url);
+      toast.success("Enlace copiado");
+    }
+  };
 
   if (!worker) return null;
 
@@ -199,6 +217,22 @@ export default function WorkerDetailModal({ worker, onClose }: WorkerDetailModal
               <p className="text-xs text-muted-foreground">Teléfono</p>
               <p className="text-sm font-mono font-medium text-foreground">{worker.phonePartial}</p>
             </div>
+            <button
+              onClick={handleShareProfile}
+              className="text-muted-foreground hover:text-terracotta transition-colors p-2 rounded-lg hover:bg-terracotta/5"
+              title="Compartir perfil"
+            >
+              <Share2 size={18} />
+            </button>
+            {onOpenProfile && (
+              <button
+                onClick={() => { onClose(); setTimeout(onOpenProfile, 150); }}
+                className="text-muted-foreground hover:text-terracotta transition-colors text-xs font-medium px-2"
+                title="Ver perfil completo"
+              >
+                Perfil completo
+              </button>
+            )}
             <button
               className="bg-terracotta text-white font-semibold text-sm px-5 py-2.5 rounded-xl hover:bg-terracotta-dark transition-colors active:scale-[0.97] shadow-sm flex-shrink-0"
             >

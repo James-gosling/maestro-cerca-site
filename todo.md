@@ -15,3 +15,10 @@
 - [x] Display uploaded photos in WorkerDetailModal gallery (photos now served via /manus-storage/ paths natively)
 - [x] Fix Home.tsx broken auto-merge from upgrade (restore useAuth import)
 - [x] Write vitest test for upload endpoint
+- [x] Add `getBySlug` tRPC query endpoint
+- [x] Build MaestroProfilePage component (full gallery, details, reviews, shareable link)
+- [x] Wire `/maestro/:slug` route in App.tsx
+- [x] Add shareable profile link button to WorkerCard (Ver Perfil → public route)
+- [x] Update WorkerDetailModal with share button and profile link
+- [x] Write vitest tests for getBySlug
+- [x] Update README with profile route documentation

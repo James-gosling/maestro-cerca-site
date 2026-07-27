@@ -18,6 +18,7 @@ import PricingComparison from "@/components/PricingComparison";
 import EmptyState from "@/components/EmptyState";
 import { MAESTROS, type Maestro, type Trade } from "@/data/mockMaestros";
 import { toast } from "sonner";
+import { useLocation } from "wouter";
 
 const TRADE_ICONS: Record<string, React.ReactNode> = {
   Plomeros: <Wrench size={20} />,
@@ -35,6 +36,7 @@ export default function Home() {
   // startLogin() during render (no href={startLogin()}) — it mints a one-time
   // nonce cookie and must run only at the moment of navigation.
   let { user, loading, error, isAuthenticated, logout } = useAuth();
+  const [, setLocation] = useLocation();
 
   const [activeSection, setActiveSection] = useState("catalogo");
   const [query, setQuery] = useState("");
@@ -71,6 +73,17 @@ export default function Home() {
     const tradeMatch = MAESTROS.find((m) => m.tradeCategory.toLowerCase() === value.toLowerCase());
     if (tradeMatch) setActiveFilter(tradeMatch.tradeCategory as Trade);
   }, []);
+
+  // Navigate to public maestro profile page
+  const navigateToProfile = useCallback((worker: Maestro) => {
+    const slug = worker.name
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-|-$/g, "");
+    setLocation(`/maestro/${slug}-${worker.id}`);
+  }, [setLocation]);
 
   return (
     <div className="min-h-screen bg-background">
@@ -199,7 +212,7 @@ export default function Home() {
                     key={worker.id}
                     worker={worker}
                     index={i}
-                    onViewProfile={() => setSelectedWorker(worker)}
+                    onViewProfile={() => navigateToProfile(worker)}
                     onContact={() => setSelectedWorker(worker)}
                   />
                 ))}
@@ -375,6 +388,7 @@ export default function Home() {
       <WorkerDetailModal
         worker={selectedWorker}
         onClose={() => setSelectedWorker(null)}
+        onOpenProfile={selectedWorker ? () => navigateToProfile(selectedWorker) : undefined}
       />
       {onboardingOpen && (
         <OnboardingWizard onClose={() => setOnboardingOpen(false)} />
