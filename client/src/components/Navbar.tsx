@@ -48,10 +48,11 @@ export default function Navbar({ activeSection, onNavigate, onRegisterClick }: N
           onClick={() => handleNav("catalogo")}
           className="flex items-center gap-2.5"
         >
-          <div className="relative w-9 h-9 rounded-full bg-terracotta flex items-center justify-center shadow-sm">
-            <div className="absolute inset-0.5 rounded-full border border-white/20" />
-            <span className="text-white font-bold text-sm font-sans relative z-10">MC</span>
-          </div>
+          <img
+            src="/manus-storage/logo-hexagon_acee6c26.jpeg"
+            alt="Maestro Cerca"
+            className="w-9 h-9 rounded-md object-cover shadow-sm"
+          />
           <span className="text-lg font-bold text-foreground font-serif hidden sm:inline tracking-tight">
             Maestro Cerca
           </span>

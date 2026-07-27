@@ -29,3 +29,7 @@
 - [x] Seed mock maestros with realistic lat/lng coordinates
 - [x] Write vitest tests for Haversine calculation and searchByRadius (7 new tests, 20 total passing)
 - [x] Update README with radius filter documentation
+- [x] Replace "MC" text logo with uploaded hexagon image in Navbar
+- [x] Replace "MC" logo in MaestroProfile page header
+- [x] Replace "MC" logo in Home.tsx Trust section, Worker CTA section, and footer
+- [x] Update VITE_APP_LOGO — uses direct /manus-storage path instead of env variable

@@ -239,9 +239,11 @@ export default function MaestroProfile() {
             </button>
 
             <div className="flex items-center gap-2">
-              <div className="w-7 h-7 bg-terracotta rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-[8px]">MC</span>
-              </div>
+              <img
+                src="/manus-storage/logo-hexagon_acee6c26.jpeg"
+                alt="Maestro Cerca"
+                className="w-7 h-7 rounded-md object-cover"
+              />
               <span className="text-sm font-semibold text-foreground font-serif">
                 Maestro Cerca
               </span>
@@ -475,9 +477,11 @@ export default function MaestroProfile() {
           <div className="container max-w-4xl mx-auto px-4 sm:px-6">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
               <div className="flex items-center gap-2">
-                <div className="w-6 h-6 bg-terracotta rounded-full flex items-center justify-center">
-                  <span className="text-white font-bold text-[7px]">MC</span>
-                </div>
+                <img
+                  src="/manus-storage/logo-hexagon_acee6c26.jpeg"
+                  alt="Maestro Cerca"
+                  className="w-6 h-6 rounded-md object-cover"
+                />
                 <span className="text-xs text-muted-foreground">
                   Perfil público de Maestro Cerca
                 </span>

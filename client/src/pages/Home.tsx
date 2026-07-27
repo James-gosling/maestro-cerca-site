@@ -327,9 +327,11 @@ export default function Home() {
         <div className="relative container max-w-5xl mx-auto px-4 sm:px-6">
           <div className="text-center mb-12">
             <div className="flex items-center justify-center gap-3 mb-3">
-              <div className="w-10 h-10 bg-terracotta rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-sm">MC</span>
-              </div>
+              <img
+                src="/manus-storage/logo-hexagon_acee6c26.jpeg"
+                alt="Maestro Cerca"
+                className="w-10 h-10 rounded-md object-cover shadow-sm"
+              />
             </div>
             <h2 className="text-2xl sm:text-3xl font-bold text-foreground mb-3">
               ¿Por qué confiar en Maestro Cerca?
@@ -425,10 +427,11 @@ export default function Home() {
           >
             <div className="absolute inset-0 bg-gradient-to-r from-terracotta/85 to-terracotta-dark/70" />
             <div className="relative p-8 sm:p-12 max-w-lg">
-              {/* MC seal motif */}
-              <div className="w-12 h-12 bg-white/15 backdrop-blur-sm rounded-full flex items-center justify-center mb-5 border border-white/20">
-                <span className="text-white font-bold text-base">MC</span>
-              </div>
+              <img
+                src="/manus-storage/logo-hexagon_acee6c26.jpeg"
+                alt="Maestro Cerca"
+                className="w-12 h-12 rounded-md object-cover mb-5 shadow-sm"
+              />
               <h2 className="text-2xl sm:text-3xl font-bold text-white mb-3 leading-tight">
                 ¿Eres un profesional del oficio?
               </h2>
@@ -452,9 +455,11 @@ export default function Home() {
         <div className="container max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center gap-2.5">
-              <div className="w-8 h-8 bg-terracotta rounded-full flex items-center justify-center">
-                <span className="text-white font-bold text-[10px]">MC</span>
-              </div>
+              <img
+                src="/manus-storage/logo-hexagon_acee6c26.jpeg"
+                alt="Maestro Cerca"
+                className="w-8 h-8 rounded-md object-cover"
+              />
               <span className="text-sm font-semibold text-foreground font-serif">Maestro Cerca</span>
               <span className="text-xs text-muted-foreground">© 2026</span>
             </div>
