@@ -176,7 +176,7 @@ export default function Home() {
         <div className="absolute inset-0">
           <img
             src="/manus-storage/hero-bg_6e683039.jpg"
-            alt=""
+            alt="Profesionales verificados trabajando en el hogar"
             className="w-full h-full object-cover object-left-top"
             loading="eager"
           />

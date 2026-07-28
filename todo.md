@@ -33,3 +33,6 @@
 - [x] Replace "MC" logo in MaestroProfile page header
 - [x] Replace "MC" logo in Home.tsx Trust section, Worker CTA section, and footer
 - [x] Update VITE_APP_LOGO — uses direct /manus-storage path instead of env variable
+- [x] SEO: Add meta keywords tag (6 focused keywords)
+- [x] SEO: Add meta description (144 characters)
+- [x] SEO: Fix 1 image missing alt text on homepage (hero background)
