@@ -6,12 +6,15 @@
 
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Search, Flame, X } from "lucide-react";
-import { TRENDING_REPAIRS, MAESTROS, type Maestro } from "@/data/mockMaestros";
+import { TRENDING_REPAIRS } from "@/data/mockMaestros";
+import type { Maestro } from "@/data/mockMaestros";
 
 interface SearchBarProps {
   query: string;
   setQuery: (q: string) => void;
   onSelectSuggestion: (value: string) => void;
+  /** Array of maestros to search against (from API or mock). */
+  maestros: Maestro[];
 }
 
 interface Suggestion {
@@ -20,7 +23,7 @@ interface Suggestion {
   sublabel?: string;
 }
 
-export default function SearchBar({ query, setQuery, onSelectSuggestion }: SearchBarProps) {
+export default function SearchBar({ query, setQuery, onSelectSuggestion, maestros }: SearchBarProps) {
   const [isFocused, setIsFocused] = useState(false);
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [debouncedQuery, setDebouncedQuery] = useState("");
@@ -39,20 +42,20 @@ export default function SearchBar({ query, setQuery, onSelectSuggestion }: Searc
     return () => clearTimeout(timer);
   }, [query]);
 
-  // Generate suggestions on debounced query
+  // Generate suggestions on debounced query using the passed-in maestros
   useEffect(() => {
     if (!debouncedQuery) return;
     const results: Suggestion[] = [];
     const q = debouncedQuery;
 
     // Match workers by name
-    MAESTROS.filter((m: Maestro) => m.name.toLowerCase().includes(q)).forEach((m) => {
+    maestros.filter((m: Maestro) => m.name.toLowerCase().includes(q)).forEach((m) => {
       results.push({ type: "worker", label: m.name, sublabel: `${m.trade} · ${m.location}` });
     });
 
     // Match trades
     const matchedTrades = new Set<string>();
-    MAESTROS.forEach((m: Maestro) => {
+    maestros.forEach((m: Maestro) => {
       if (m.trade.toLowerCase().includes(q) && !matchedTrades.has(m.trade)) {
         matchedTrades.add(m.trade);
         results.push({ type: "trade", label: m.trade });
@@ -65,7 +68,7 @@ export default function SearchBar({ query, setQuery, onSelectSuggestion }: Searc
 
     // Match skills
     const matchedSkills = new Set<string>();
-    MAESTROS.forEach((m: Maestro) => {
+    maestros.forEach((m: Maestro) => {
       m.skills.forEach((s) => {
         if (s.toLowerCase().includes(q) && !matchedSkills.has(s)) {
           matchedSkills.add(s);
@@ -75,7 +78,7 @@ export default function SearchBar({ query, setQuery, onSelectSuggestion }: Searc
     });
 
     setSuggestions(results.slice(0, 6));
-  }, [debouncedQuery]);
+  }, [debouncedQuery, maestros]);
 
   // Close on click outside
   useEffect(() => {

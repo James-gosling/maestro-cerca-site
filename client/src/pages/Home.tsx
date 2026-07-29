@@ -8,6 +8,7 @@
 import { useState, useMemo, useCallback } from "react";
 import { ShieldCheck, Star, Clock, Award, ArrowDown, Wrench, Zap, Building2, Paintbrush, MapPin } from "lucide-react";
 import { useAuth } from "@/_core/hooks/useAuth";
+import { trpc } from "@/lib/trpc";
 import Navbar from "@/components/Navbar";
 import SearchBar from "@/components/SearchBar";
 import FilterPills from "@/components/FilterPills";
@@ -20,6 +21,51 @@ import RadiusFilter from "@/components/RadiusFilter";
 import { MAESTROS, type Maestro, type Trade } from "@/data/mockMaestros";
 import { toast } from "sonner";
 import { useLocation } from "wouter";
+
+/**
+ * Convert an API maestro row (from maestros.list / searchByRadius) into
+ * the mock Maestro shape that WorkerCard expects. Fields that the API
+ * doesn't provide are filled with safe defaults so the UI never breaks.
+ */
+function apiRowToMock(apiRow: {
+  id: number;
+  name: string;
+  trade: string;
+  experience: number | null;
+  workType: string | null;
+  zone: string;
+  phone: string;
+  galleryImages?: { url: string; caption: string; key?: string }[];
+  latitude?: number | null;
+  longitude?: number | null;
+  distanceKm?: number;
+  profileUrl?: string;
+}): Maestro & { _apiId: number; _distance?: number } {
+  const tradeCategory = `${apiRow.trade}s`.replace(/es$/, "es").replace(/os$/, "os");
+  return {
+    id: `api-${apiRow.id}`,
+    name: apiRow.name,
+    trade: apiRow.trade,
+    tradeCategory,
+    experienceYears: apiRow.experience ?? 0,
+    rating: 4.5,
+    reviewCount: 0,
+    skills: [apiRow.trade],
+    location: apiRow.zone,
+    availability: "Disponible hoy",
+    imageUrl: apiRow.galleryImages?.[0]?.url ?? "",
+    isVerified: true,
+    bio: `${apiRow.trade} con ${apiRow.experience ?? 0} años de experiencia en ${apiRow.zone}.`,
+    galleryImages: (apiRow.galleryImages ?? []).map((g) => ({ url: g.url, caption: g.caption })),
+    reviews: [],
+    phonePartial: apiRow.phone.replace(/^(\+?52\s?)(\d{2})(\d{4})/, (_, p1, p2, rest) => `+${p1} ${p2} **** ${rest.slice(-4)}`),
+    hourlyRate: "$400 – $700 MXN/hr",
+    completedJobs: 0,
+    responseTime: "< 1 hora",
+    _apiId: apiRow.id,
+    _distance: apiRow.distanceKm,
+  };
+}
 
 const TRADE_ICONS: Record<string, React.ReactNode> = {
   Plomeros: <Wrench size={20} />,
@@ -38,6 +84,10 @@ export default function Home() {
   // nonce cookie and must run only at the moment of navigation.
   let { user, loading, error, isAuthenticated, logout } = useAuth();
   const [, setLocation] = useLocation();
+
+  // ── Fetch approved maestros from the backend ──
+  const { data: approvedMaestros, isLoading: approvedLoading } = trpc.maestros.list.useQuery();
+  const approvedCount = approvedMaestros?.length ?? 0;
 
   const [activeSection, setActiveSection] = useState("catalogo");
   const [query, setQuery] = useState("");
@@ -86,8 +136,21 @@ export default function Home() {
     return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   }, []);
 
+  // Convert API-approved maestros to mock shape for rendering
+  const apiMaestros: (Maestro & { _apiId: number; _distance?: number; lat?: number; lng?: number })[] = useMemo(() => {
+    if (!approvedMaestros || approvedMaestros.length === 0) return [];
+    return approvedMaestros.map(apiRowToMock).map((m) => ({
+      ...m,
+      lat: (approvedMaestros?.find((r) => r.id === m._apiId) as any)?.latitude,
+      lng: (approvedMaestros?.find((r) => r.id === m._apiId) as any)?.longitude,
+    }));
+  }, [approvedMaestros]);
+
+  // Use API data when available, fall back to mock data
+  const sourceMaestros = apiMaestros.length > 0 ? apiMaestros : MAESTROS_WITH_COORDS;
+
   const filteredMaestros = useMemo(() => {
-    let results = MAESTROS_WITH_COORDS;
+    let results = sourceMaestros;
     if (activeFilter !== "Todos") {
       results = results.filter((m) => m.tradeCategory === activeFilter);
     }
@@ -117,7 +180,7 @@ export default function Home() {
         .sort((a, b) => a._distance - b._distance);
     }
     return results;
-  }, [query, activeFilter, userLocation, radiusKm, MAESTROS_WITH_COORDS, haversineKm]);
+  }, [query, activeFilter, userLocation, radiusKm, sourceMaestros, haversineKm]);
 
   const handleLocationChange = useCallback((location: { lat: number; lng: number } | null, _label: string) => {
     setUserLocation(location);
@@ -199,7 +262,9 @@ export default function Home() {
                   <ShieldCheck size={11} className="text-white" />
                 </div>
                 <span className="text-xs font-semibold text-foreground">
-                  {MAESTROS.filter((m) => m.isVerified).length} maestros verificados disponibles
+                  {approvedCount > 0
+                    ? `${approvedCount} maestr${approvedCount === 1 ? "o" : "os"} verificado${approvedCount === 1 ? "" : "s"} disponible${approvedCount === 1 ? "" : "s"}`
+                    : `${MAESTROS.filter((m) => m.isVerified).length} maestros verificados disponibles`}
                 </span>
               </div>
 
@@ -218,6 +283,7 @@ export default function Home() {
                 query={query}
                 setQuery={setQuery}
                 onSelectSuggestion={handleSelectSuggestion}
+                maestros={sourceMaestros}
               />
 
               <div className="mt-6 flex items-center gap-3">
@@ -268,7 +334,10 @@ export default function Home() {
                 </h2>
               </div>
               <p className="text-sm text-muted-foreground">
-                {filteredMaestros.length} profesional{filteredMaestros.length !== 1 ? "es" : ""} cerca de ti
+                {apiMaestros.length > 0
+                  ? `${filteredMaestros.length} maestr${filteredMaestros.length === 1 ? "o" : "os"} verificado${filteredMaestros.length === 1 ? "" : "s"}`
+                  : `${filteredMaestros.length} profesional${filteredMaestros.length !== 1 ? "es" : ""} cerca de ti`}
+                {approvedLoading && " · cargando..."}
               </p>
             </div>
           </div>
@@ -287,7 +356,7 @@ export default function Home() {
               activeFilter={activeFilter}
               setActiveFilter={setActiveFilter}
               maestros={filteredMaestros}
-              allMaestros={MAESTROS}
+              allMaestros={sourceMaestros}
             />
           </div>
 

@@ -49,6 +49,13 @@ Workers can now upload real project photos during registration. The OnboardingWi
 | `maestros.uploadPhoto` | Mutation | Upload single photo to S3 (base64 input) |
 | `maestros.list` | Query | List all approved maestros |
 | `maestros.getBySlug` | Query | Get maestro by URL slug (format: `{name-slug}-{id}`) |
+| `maestros.searchByRadius` | Query | Search maestros within km radius using Haversine |
+| `maestros.geocode` | Query | Geocode a location query to lat/lng |
+| `maestros.listPending` | Query (admin) | List pending registrations for admin review |
+| `maestros.listAll` | Query (admin) | List all maestros regardless of status |
+| `maestros.approve` | Mutation (admin) | Approve a pending maestro registration |
+| `maestros.reject` | Mutation (admin) | Reject a pending maestro registration |
+| `maestros.stats` | Query (admin) | Get counts by verification status |
 
 ## Architecture
 
@@ -75,7 +82,7 @@ server/
 ├── routers/
 │   └── maestros.ts              # register, uploadPhoto, list, getBySlug, searchByRadius, geocode
 ├── storage.ts                   # S3 helpers (storagePut, storageGet)
-├── maestros.test.ts             # Vitest coverage (20 tests)
+├── maestros.test.ts             # Vitest coverage (27 tests)
 └── db.ts                        # Drizzle query helpers
 
 drizzle/
@@ -175,6 +182,52 @@ Example: "Don Chucho Ramírez" (id: 5) → `don-chucho-ramirez-5`
 3. MaestroProfile.tsx fetches data via `trpc.maestros.getBySlug.useQuery`
 4. Profile page renders with share + WhatsApp CTAs
 5. WorkerDetailModal also has a "Perfil completo" button linking to the same route
+
+## Admin Review Dashboard
+
+New worker registrations are created with `verificationStatus: "pending"` and do not appear in the public catalog, search, or profile pages until an administrator approves them. The admin dashboard at `/admin` provides a complete review workflow:
+
+### Access Control
+
+- Only users with `role: "admin"` in the `users` table can access admin endpoints
+- Non-admin users receive a `FORBIDDEN` error from the backend
+- The frontend `Admin.tsx` page redirects non-admin users to the home page
+- Admin endpoints use the `adminProcedure` middleware from `server/_core/trpc.ts`
+
+### Admin Endpoints
+
+| Procedure | Description | Input |
+|-----------|-------------|-------|
+| `maestros.listPending` | Returns only pending registrations | None |
+| `maestros.listAll` | Returns all maestros (any status) | None |
+| `maestros.approve` | Changes status from pending to approved | `{ id: number }` |
+| `maestros.reject` | Changes status from pending to rejected | `{ id: number }` |
+| `maestros.stats` | Returns `{ pending, approved, rejected, total }` counts | None |
+
+### Admin Dashboard Features
+
+- **Stats cards** showing pending, approved, rejected, and total counts
+- **Tabbed view** for Pending, Approved, Rejected, and All maestros
+- **Expandable detail panel** showing portfolio photos, ID document, and registration details
+- **Approve/Reject buttons** with optimistic updates and toast notifications
+- **Pending-only action buttons** — approve/reject only appear for pending registrations
+
+### Approval Flow
+
+1. Worker completes registration via OnboardingWizard → status is `"pending"`
+2. Admin logs in, navigates to `/admin`
+3. Pending registrations appear in the "Pendientes" tab
+4. Admin reviews portfolio photos and ID document
+5. Admin clicks "Aprobar" → status becomes `"approved"` → maestro appears in public catalog
+6. Admin clicks "Rechazar" → status becomes `"rejected"` → maestro is hidden permanently
+
+### Verification Status States
+
+| Status | Public Visibility | Admin Actions |
+|--------|-------------------|---------------|
+| `pending` | Hidden from catalog, search, and profile | Approve or Reject |
+| `approved` | Visible everywhere | None (already reviewed) |
+| `rejected` | Hidden permanently | None (already reviewed) |
 
 ## Location Radius Filter
 
