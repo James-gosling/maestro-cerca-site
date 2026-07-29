@@ -8,12 +8,15 @@ import Home from "./pages/Home";
 import MaestroProfile from "./pages/MaestroProfile";
 import Admin from "./pages/Admin";
 
+import MiPerfil from "./pages/MiPerfil";
+
 function Router() {
   // make sure to consider if you need authentication for certain routes
   return (
     <Switch>
       <Route path={"/"} component={Home} />
       <Route path={"/maestro/:slug"} component={MaestroProfile} />
+      <Route path={"/mi-perfil"} component={MiPerfil} />
       <Route path={"/admin"} component={Admin} />
       <Route path={"/404"} component={NotFound} />
       {/* Final fallback route */}

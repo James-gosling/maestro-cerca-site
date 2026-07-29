@@ -1,0 +1,36 @@
+{
+    # Global settings
+    admin off
+}
+
+:80, :443 {
+    # Enable Gzip and Brotli compression
+    encode gzip brotli
+
+    # Security headers
+    header {
+        X-Frame-Options "DENY"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    # Route backend API and tRPC requests to the app container
+    handle /api/* {
+        reverse_proxy app:3000
+    }
+    
+    handle /trpc/* {
+        reverse_proxy app:3000
+    }
+
+    handle /manus-storage/* {
+        reverse_proxy app:3000
+    }
+    
+    # Static files serving for the SPA
+    handle {
+        root * /var/www/html
+        try_files {path} /index.html
+        file_server
+    }
+}

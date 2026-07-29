@@ -6,6 +6,7 @@
 
 import { Star, ShieldCheck, MapPin, Zap, Briefcase } from "lucide-react";
 import type { Maestro } from "@/data/mockMaestros";
+import { calculateTier } from "shared/tierUtils";
 
 interface WorkerCardProps {
   worker: Maestro;
@@ -40,13 +41,24 @@ export default function WorkerCard({ worker, onViewProfile, onContact, index, di
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />
 
-        {/* Sello Maestro — terracotta-toned badge */}
-        {worker.isVerified && (
-          <div className="absolute top-3 left-3 flex items-center gap-1 bg-white/95 backdrop-blur-sm text-amber-800 text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-md select-none border border-amber-300/40">
-            <ShieldCheck size={11} strokeWidth={2.5} className="text-amber-600" />
-            Sello Maestro
-          </div>
-        )}
+        {(() => {
+          const tierInfo = calculateTier({
+            points: (worker as any).points || 0,
+            referencesCount: (worker as any).referencesCount || 0,
+            reviewsCount: worker.reviewCount || 0,
+            verificationStatus: worker.isVerified ? "approved" : "pending",
+          });
+
+          if (tierInfo.level > 1) {
+            return (
+              <div className={`absolute top-3 left-3 flex items-center gap-1.5 bg-gradient-to-r text-[11px] font-bold px-2.5 py-1.5 rounded-full shadow-md select-none border ${tierInfo.badgeColors}`}>
+                <ShieldCheck size={12} strokeWidth={2.5} className="flex-shrink-0" />
+                {tierInfo.name}
+              </div>
+            );
+          }
+          return null;
+        })()}
 
         {/* Rating — bottom-right with star fill */}
         <div className="absolute bottom-3 right-3 flex items-center gap-1 bg-white/95 backdrop-blur-sm text-warm-charcoal text-xs font-semibold px-2.5 py-1.5 rounded-lg shadow-sm">

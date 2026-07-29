@@ -11,6 +11,7 @@ import { useState } from "react";
 import { X, Star, ShieldCheck, Clock, Briefcase, Phone, MapPin, ChevronLeft, ChevronRight, Share2 } from "lucide-react";
 import type { Maestro } from "@/data/mockMaestros";
 import { toast } from "sonner";
+import { calculateTier } from "shared/tierUtils";
 
 interface WorkerDetailModalProps {
   worker: Maestro | null;
@@ -134,18 +135,31 @@ export default function WorkerDetailModal({ worker, onClose, onOpenProfile }: Wo
           </div>
 
           <div className="p-5 sm:p-6 space-y-6">
-            {/* Verification Badge */}
-            {worker.isVerified && (
-              <div className="flex items-center gap-2 bg-gold-badge/10 border border-gold-badge/30 rounded-xl px-4 py-3">
-                <ShieldCheck size={20} className="text-amber-600" />
-                <div>
-                  <p className="text-sm font-semibold text-foreground">Sello Maestro Verificado</p>
-                  <p className="text-xs text-muted-foreground">
-                    Identidad, documentos y antecedentes verificados por Maestro Cerca
-                  </p>
-                </div>
-              </div>
-            )}
+            {(() => {
+              const tierInfo = calculateTier({
+                points: (worker as any).points || 0,
+                referencesCount: (worker as any).referencesCount || 0,
+                reviewsCount: worker.reviewCount || 0,
+                verificationStatus: worker.isVerified ? "approved" : "pending",
+              });
+
+              if (tierInfo.level > 1) {
+                return (
+                  <div className={`flex items-center gap-3 border rounded-xl px-4 py-3 ${tierInfo.cardColors}`}>
+                    <ShieldCheck size={24} className="flex-shrink-0 opacity-80" />
+                    <div>
+                      <p className="text-sm font-bold">{tierInfo.name}</p>
+                      <p className="text-xs opacity-90">
+                        {tierInfo.level === 3 
+                          ? "Historial impecable, referencias verificadas y alta satisfacción garantizada." 
+                          : "Identidad, documentos y antecedentes verificados por Maestro Cerca."}
+                      </p>
+                    </div>
+                  </div>
+                );
+              }
+              return null;
+            })()}
 
             {/* Stats Row — only show if data is available */}
             {(completedJobs > 0 || hasRating || responseTime) && (

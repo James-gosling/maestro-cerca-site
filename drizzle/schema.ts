@@ -24,12 +24,19 @@ export type InsertUser = typeof users.$inferInsert;
  */
 export const maestros = mysqlTable("maestros", {
   id: int("id").autoincrement().primaryKey(),
+  userId: int("userId").references(() => users.id),
   name: text("name").notNull(),
   phone: varchar("phone", { length: 20 }).notNull(),
   trade: text("trade").notNull(),
   experience: int("experience").default(0),
   workType: mysqlEnum("workType", ["independiente", "empresa"]).default("independiente"),
   zone: text("zone").notNull(),
+  bio: text("bio"),
+  skills: json("skills"),
+  avatarUrl: text("avatarUrl"),
+  points: int("points").default(0).notNull(),
+  referencesCount: int("referencesCount").default(0).notNull(),
+  reviewsCount: int("reviewsCount").default(0).notNull(),
   /** JSON array of { url: string; caption: string; key: string } */
   galleryImages: json("galleryImages"),
   verificationStatus: mysqlEnum("verificationStatus", ["pending", "approved", "rejected"]).default("pending"),

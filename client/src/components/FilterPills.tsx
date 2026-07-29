@@ -28,6 +28,9 @@ export default function FilterPills({ activeFilter, setActiveFilter, maestros, a
         {TRADES.map((trade) => {
           const isActive = activeFilter === trade;
           const count = getCount(trade);
+          // Zero-Result optimization: don't show filters with 0 count unless it's 'Todos' or active
+          if (count === 0 && trade !== "Todos" && !isActive) return null;
+          
           return (
             <button
               key={trade}
@@ -42,15 +45,7 @@ export default function FilterPills({ activeFilter, setActiveFilter, maestros, a
                 }
               `}
             >
-              {trade}
-              <span
-                className={`
-                  text-[11px] font-bold px-1.5 py-0.5 rounded-full
-                  ${isActive ? "bg-white/25 text-white" : "bg-muted text-muted-foreground"}
-                `}
-              >
-                {count}
-              </span>
+              {trade} ({count})
             </button>
           );
         })}

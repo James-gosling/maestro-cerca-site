@@ -40,6 +40,12 @@ function apiRowToMock(apiRow: {
   longitude?: number | null;
   distanceKm?: number;
   profileUrl?: string;
+  points?: number;
+  referencesCount?: number;
+  reviewsCount?: number;
+  verificationStatus?: string | null;
+  bio?: string | null;
+  skills?: any;
 }): Maestro & { _apiId: number; _distance?: number } {
   const tradeCategory = `${apiRow.trade}s`.replace(/es$/, "es").replace(/os$/, "os");
   return {
@@ -49,19 +55,24 @@ function apiRowToMock(apiRow: {
     tradeCategory,
     experienceYears: apiRow.experience ?? 0,
     rating: 4.5,
-    reviewCount: 0,
-    skills: [apiRow.trade],
+    reviewCount: apiRow.reviewsCount ?? 0,
+    skills: Array.isArray(apiRow.skills) && apiRow.skills.length > 0 ? (apiRow.skills as string[]) : [apiRow.trade],
     location: apiRow.zone,
     availability: "Disponible hoy",
-    imageUrl: apiRow.galleryImages?.[0]?.url ?? "",
-    isVerified: true,
-    bio: `${apiRow.trade} con ${apiRow.experience ?? 0} años de experiencia en ${apiRow.zone}.`,
+    imageUrl: apiRow.galleryImages?.[0]?.url || `https://ui-avatars.com/api/?name=${encodeURIComponent(apiRow.name)}&background=C46A3A&color=fff`,
+    isVerified: apiRow.verificationStatus === "approved",
+    bio: apiRow.bio || `${apiRow.trade} con ${apiRow.experience ?? 0} años de experiencia en ${apiRow.zone}.`,
     galleryImages: (apiRow.galleryImages ?? []).map((g) => ({ url: g.url, caption: g.caption })),
     reviews: [],
     phonePartial: apiRow.phone.replace(/^(\+?52\s?)(\d{2})(\d{4})/, (_, p1, p2, rest) => `+${p1} ${p2} **** ${rest.slice(-4)}`),
     hourlyRate: "$400 – $700 MXN/hr",
-    completedJobs: 0,
+    completedJobs: apiRow.referencesCount ?? 0,
     responseTime: "< 1 hora",
+    // Gamification properties passed for Tier calculation
+    points: apiRow.points ?? 0,
+    referencesCount: apiRow.referencesCount ?? 0,
+    reviewsCount: apiRow.reviewsCount ?? 0,
+    verificationStatus: apiRow.verificationStatus ?? "pending",
     _apiId: apiRow.id,
     _distance: apiRow.distanceKm,
   };

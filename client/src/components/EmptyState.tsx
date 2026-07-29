@@ -41,7 +41,7 @@ export default function EmptyState({ query, filter, onClearQuery, onClearFilter 
             onClick={onClearFilter}
             className="text-sm font-medium px-5 py-2.5 bg-terracotta text-white rounded-xl hover:bg-terracotta-dark transition-colors"
           >
-            Mostrar todos los maestros
+            Mostrar todos los {filter}
           </button>
         )}
       </div>

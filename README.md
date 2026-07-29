@@ -262,6 +262,25 @@ When `distanceKm` is provided, the WorkerCard renders a terracotta-tinted badge 
 - `>= 1 km` → shown in kilometers (e.g., "3.4 km")
 - Clicking the badge clears the location filter
 
+## Production Deployment (Docker & Caddy)
+
+The application is fully containerized and production-ready for deployment on a low-cost VPS (e.g., $4/month) using Docker Compose, MySQL 8, and a Caddy reverse proxy.
+
+### Container Architecture
+
+1. **`db` (MySQL 8.0)**: Persistent database using Docker volumes (`mysql_data`). Configured with a native `mysqladmin` healthcheck.
+2. **`app` (Node.js)**: A multi-stage Docker build (`node:20-alpine`) that installs only production dependencies (`pnpm install --prod`) to minimize image size. An entrypoint script (`start.sh`) automatically runs `npx drizzle-kit push` before starting the server.
+3. **`web` (Caddy)**: A reverse proxy that handles automatic HTTPS (via Cloudflare or Let's Encrypt), Brotli/Gzip compression, and security headers. It serves the static React build directly from a shared volume (`spa_build`) and proxies `/api/*` and `/trpc/*` back to the Node app.
+
+### Deployment Instructions
+
+1. Copy `.env.production.example` to `.env` and fill in your secrets (JWT, S3/R2 keys, DB passwords).
+2. Run the deployment script:
+   ```bash
+   ./scripts/deploy.sh
+   ```
+   *This script pulls the latest code, runs `docker compose up --build -d`, and prunes dangling images to conserve disk space.*
+
 ## Tech Stack
 
 - React 19 (Functional Components + Hooks)

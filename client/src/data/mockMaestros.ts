@@ -18,6 +18,10 @@ export interface Maestro {
   hourlyRate: string;
   completedJobs: number;
   responseTime: string;
+  points?: number;
+  referencesCount?: number;
+  reviewsCount?: number;
+  verificationStatus?: string | null;
 }
 
 export const MAESTROS: Maestro[] = [

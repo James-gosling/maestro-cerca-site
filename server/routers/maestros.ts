@@ -4,7 +4,7 @@ import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { maestros, type InsertMaestro } from "../../drizzle/schema";
 import { storagePut } from "../storage";
-import { adminProcedure, publicProcedure, router } from "../_core/trpc";
+import { adminProcedure, publicProcedure, router, protectedProcedure } from "../_core/trpc";
 
 /**
  * Haversine formula: calculate distance in km between two lat/lng points.
@@ -110,7 +110,7 @@ export const maestrosRouter = router({
    * Register a new maestro with their details and optional gallery photos.
    * Photos are uploaded to S3 and stored as JSON array of { url, caption, key }.
    */
-  register: publicProcedure
+  register: protectedProcedure
     .input(
       z.object({
         name: z.string().min(2).max(100),
@@ -133,11 +133,12 @@ export const maestrosRouter = router({
         longitude: z.number().optional(),
       })
     )
-    .mutation(async ({ input }) => {
+    .mutation(async ({ ctx, input }) => {
       const db = await getDb();
       if (!db) throw new Error("Database not available");
 
       const insertData: InsertMaestro = {
+        userId: ctx.user.id,
         name: input.name,
         phone: input.phone,
         trade: input.trade,
@@ -195,7 +196,8 @@ export const maestrosRouter = router({
     const rows = await db
       .select()
       .from(maestros)
-      .where(eq(maestros.verificationStatus, "approved"));
+      .where(eq(maestros.verificationStatus, "approved"))
+      .orderBy(sql`${maestros.points} DESC`);
 
     return rows.map((row) => ({
       ...row,
@@ -268,7 +270,12 @@ export const maestrosRouter = router({
           ),
         }))
         .filter((row) => row.distanceKm <= input.radiusKm)
-        .sort((a, b) => a.distanceKm - b.distanceKm);
+        .sort((a, b) => {
+          if (b.points !== a.points) {
+            return b.points - a.points;
+          }
+          return a.distanceKm - b.distanceKm;
+        });
 
       return results;
     }),
@@ -418,4 +425,77 @@ export const maestrosRouter = router({
       total: rows.length,
     };
   }),
+
+  /**
+   * Get the logged-in user's maestro profile
+   */
+  myProfile: protectedProcedure.query(async ({ ctx }) => {
+    const db = await getDb();
+    if (!db) return null;
+
+    const rows = await db
+      .select()
+      .from(maestros)
+      .where(eq(maestros.userId, ctx.user.id))
+      .limit(1);
+
+    if (rows.length === 0) return null;
+    return rows[0];
+  }),
+
+  /**
+   * Update a maestro's profile. Requires ownership.
+   */
+  updateProfile: protectedProcedure
+    .input(
+      z.object({
+        id: z.number().int().min(1),
+        bio: z.string().optional(),
+        skills: z.array(z.string()).optional(),
+        avatarUrl: z.string().optional(),
+        galleryImages: z
+          .array(
+            z.object({
+              url: z.string(),
+              caption: z.string().max(200),
+              key: z.string(),
+            })
+          )
+          .optional(),
+      })
+    )
+    .mutation(async ({ ctx, input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      const existing = await db
+        .select()
+        .from(maestros)
+        .where(eq(maestros.id, input.id))
+        .limit(1);
+
+      if (existing.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Maestro not found" });
+      }
+
+      if (existing[0].userId !== ctx.user.id) {
+        throw new TRPCError({ code: "FORBIDDEN", message: "You can only edit your own profile" });
+      }
+
+      // Gamification Point Engine: +5 points for profile updates to prevent decay
+      const newPoints = (existing[0].points || 0) + 5;
+
+      await db
+        .update(maestros)
+        .set({
+          bio: input.bio,
+          skills: input.skills,
+          avatarUrl: input.avatarUrl,
+          galleryImages: input.galleryImages,
+          points: newPoints,
+        })
+        .where(eq(maestros.id, input.id));
+
+      return { success: true, points: newPoints };
+    }),
 });
