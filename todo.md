@@ -36,3 +36,10 @@
 - [x] SEO: Add meta keywords tag (6 focused keywords)
 - [x] SEO: Add meta description (144 characters)
 - [x] SEO: Fix 1 image missing alt text on homepage (hero background)
+- [x] Switch default verificationStatus to "pending" for new registrations
+- [x] Add admin tRPC routes: listPending, listAll, approve, reject, stats
+- [x] Build AdminDashboard page with pending queue, approve/reject, portfolio/ID preview
+- [x] Wire /admin route in App.tsx with admin-only protection
+- [ ] Update Home.tsx to fetch approved maestros from API (currently uses mock data for demo)
+- [x] Write vitest tests for admin routes (8 new tests, 27 total passing)
+- [ ] Update README with admin dashboard documentation

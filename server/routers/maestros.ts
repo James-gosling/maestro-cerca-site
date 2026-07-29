@@ -1,9 +1,10 @@
 import { z } from "zod";
 import { eq, and, sql } from "drizzle-orm";
+import { TRPCError } from "@trpc/server";
 import { getDb } from "../db";
 import { maestros, type InsertMaestro } from "../../drizzle/schema";
 import { storagePut } from "../storage";
-import { publicProcedure, router } from "../_core/trpc";
+import { adminProcedure, publicProcedure, router } from "../_core/trpc";
 
 /**
  * Haversine formula: calculate distance in km between two lat/lng points.
@@ -149,7 +150,7 @@ export const maestrosRouter = router({
         idDocumentKey: input.idDocumentKey,
         latitude: input.latitude,
         longitude: input.longitude,
-        verificationStatus: "approved",
+        verificationStatus: "pending",
       };
 
       const result = await db.insert(maestros).values(insertData);
@@ -157,7 +158,7 @@ export const maestrosRouter = router({
       return {
         id: result[0].insertId,
         success: true,
-        message: "Registro completado exitosamente",
+        message: "Registro enviado. Tu perfil será revisado y aprobado en las próximas 24-48 horas.",
       };
     }),
 
@@ -271,4 +272,150 @@ export const maestrosRouter = router({
 
       return results;
     }),
+
+  // ── Admin Procedures ──
+
+  /**
+   * List all maestros regardless of status (admin only).
+   */
+  listAll: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const rows = await db
+      .select()
+      .from(maestros)
+      .orderBy(maestros.createdAt);
+
+    return rows.map((row) => ({
+      ...row,
+      slug: `${slugify(row.name)}-${row.id}`,
+      profileUrl: `/maestro/${slugify(row.name)}-${row.id}`,
+      galleryImages: row.galleryImages
+        ? (row.galleryImages as { url: string; caption: string; key: string }[])
+        : [],
+    }));
+  }),
+
+  /**
+   * List only pending maestros for admin review queue.
+   */
+  listPending: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return [];
+
+    const rows = await db
+      .select()
+      .from(maestros)
+      .where(eq(maestros.verificationStatus, "pending"))
+      .orderBy(maestros.createdAt);
+
+    return rows.map((row) => ({
+      ...row,
+      slug: `${slugify(row.name)}-${row.id}`,
+      profileUrl: `/maestro/${slugify(row.name)}-${row.id}`,
+      galleryImages: row.galleryImages
+        ? (row.galleryImages as { url: string; caption: string; key: string }[])
+        : [],
+    }));
+  }),
+
+  /**
+   * Approve a pending maestro registration.
+   * Returns NOT_FOUND if the maestro doesn't exist, and FORBIDDEN if already reviewed.
+   */
+  approve: adminProcedure
+    .input(
+      z.object({
+        id: z.number().int().min(1),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Check that the maestro exists and is still pending
+      const existing = await db
+        .select()
+        .from(maestros)
+        .where(eq(maestros.id, input.id))
+        .limit(1);
+
+      if (existing.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Maestro not found" });
+      }
+      if (existing[0].verificationStatus !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot approve: status is already "${existing[0].verificationStatus}"`,
+        });
+      }
+
+      await db
+        .update(maestros)
+        .set({ verificationStatus: "approved" })
+        .where(eq(maestros.id, input.id));
+
+      return { success: true, id: input.id, status: "approved" };
+    }),
+
+  /**
+   * Reject a pending maestro registration.
+   * Returns NOT_FOUND if the maestro doesn't exist, and FORBIDDEN if already reviewed.
+   */
+  reject: adminProcedure
+    .input(
+      z.object({
+        id: z.number().int().min(1),
+        reason: z.string().optional(),
+      })
+    )
+    .mutation(async ({ input }) => {
+      const db = await getDb();
+      if (!db) throw new Error("Database not available");
+
+      // Check that the maestro exists and is still pending
+      const existing = await db
+        .select()
+        .from(maestros)
+        .where(eq(maestros.id, input.id))
+        .limit(1);
+
+      if (existing.length === 0) {
+        throw new TRPCError({ code: "NOT_FOUND", message: "Maestro not found" });
+      }
+      if (existing[0].verificationStatus !== "pending") {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: `Cannot reject: status is already "${existing[0].verificationStatus}"`,
+        });
+      }
+
+      await db
+        .update(maestros)
+        .set({ verificationStatus: "rejected" })
+        .where(eq(maestros.id, input.id));
+
+      return { success: true, id: input.id, status: "rejected" };
+    }),
+
+  /**
+   * Get review stats: counts by status.
+   */
+  stats: adminProcedure.query(async () => {
+    const db = await getDb();
+    if (!db) return { pending: 0, approved: 0, rejected: 0, total: 0 };
+
+    const rows = await db.select().from(maestros);
+    const pending = rows.filter((r) => r.verificationStatus === "pending").length;
+    const approved = rows.filter((r) => r.verificationStatus === "approved").length;
+    const rejected = rows.filter((r) => r.verificationStatus === "rejected").length;
+
+    return {
+      pending,
+      approved,
+      rejected,
+      total: rows.length,
+    };
+  }),
 });

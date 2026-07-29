@@ -25,6 +25,58 @@ function createPublicContext(): TrpcContext {
  */
 const VALID_BASE64_JPEG = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAMCAgMCAgMDAwMEAwMEBQgFBQQEBQoHBwYIDAoMCwsKCwsLDA0QMDAxKjwvNTIwNTU5NDw6Ozs6Ojs7Oz8/3sA2Nz87PDw9QDw1ODQ4NTwwOzs3NTU7Oz87/3sAQDAwNDAwODA6ODU4NjQ1NTY1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU1NTU7/wAARCAABAAEDASIAAhEBAxEB/8QAHwAAAQUBAQEBAQEAAAAAAAAAAAECAwQFBgcICQoL/8QAtRAAAgEDAwIEAwUFBAQAAAF9AQIDAAQRBRIhMUEGE1FhByJxFDKBkaEII0KxwRVS0fAkM2JyggkKFhcYGRolJicoKSo0NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqDhIWGh4iJipKTlJWWl5iZmqKjpKWmp6ipqrKztLW2t7i5usLDxMXGx8jJytLT1NXW19jZ2uHi4+Tl5ufo6erx8vP09fb3+Pn6/8QAHwEAAwEBAQEBAQEBAQAAAAAAAAECAwQFBgcICQoL/8QAtREAAgECBAQDBAcFBAQAAQJ3AAECAxEEBSExBhJBUQdhcRMiMoEIFEKRobHBCSMzUvAVYnLRChYkNOEl8RcYGR4JSAoKjQ02NTY3ODk6Q0RFRkdISUpTVFVWV1hZWmNkZWZnaGlqc3R1dnd4eXqCg4SFhoeIiYqSk5SVlpeYmZqio6Slpqeoqaqys7S1tre4ubrCw8TFxsfIycrS09TV1tfY2drh4uPk5ebn6Onq8vP09fb3+Pn6/9oADAMBAAIRAxEAPwD9/KKKK//Z";
 
+/**
+ * Admin context — role: "admin"
+ */
+function createAdminContext(): TrpcContext {
+  return {
+    user: {
+      id: 999,
+      openId: "admin-test",
+      name: "Admin",
+      email: "admin@test.com",
+      loginMethod: "manus",
+      role: "admin",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    },
+    req: {
+      protocol: "https",
+      headers: {},
+    } as TrpcContext["req"],
+    res: {
+      clearCookie: () => {},
+    } as TrpcContext["res"],
+  };
+}
+
+/**
+ * Regular user context — role: "user"
+ */
+function createUserContext(): TrpcContext {
+  return {
+    user: {
+      id: 1000,
+      openId: "user-test",
+      name: "Regular User",
+      email: "user@test.com",
+      loginMethod: "manus",
+      role: "user",
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      lastSignedIn: new Date(),
+    },
+    req: {
+      protocol: "https",
+      headers: {},
+    } as TrpcContext["req"],
+    res: {
+      clearCookie: () => {},
+    } as TrpcContext["res"],
+  };
+}
+
 describe("maestros router", () => {
   describe("uploadPhoto", () => {
     it("uploads a photo and returns URL + key", async () => {
@@ -106,7 +158,7 @@ describe("maestros router", () => {
       expect(result).toHaveProperty("id");
       expect(result.id).toBeGreaterThan(0);
       expect(result.success).toBe(true);
-      expect(result.message).toBe("Registro completado exitosamente");
+      expect(result.message).toContain("Registro enviado");
     });
 
     it("rejects registration with missing required fields", async () => {
@@ -185,11 +237,13 @@ describe("maestros router", () => {
     });
 
     it("returns maestros within radius with distanceKm sorted ascending", async () => {
-      const ctx = createPublicContext();
-      const caller = appRouter.createCaller(ctx);
+      const publicCtx = createPublicContext();
+      const publicCaller = appRouter.createCaller(publicCtx);
+      const adminCtx = createAdminContext();
+      const adminCaller = appRouter.createCaller(adminCtx);
 
       // Register two maestros with coordinates at known distances from Coyoacán center
-      const nearResult = await caller.maestros.register({
+      const nearResult = await publicCaller.maestros.register({
         name: "Near Maestro",
         phone: "5533333333",
         trade: "Plomero",
@@ -200,7 +254,7 @@ describe("maestros router", () => {
         longitude: -99.1615,
       });
 
-      const farResult = await caller.maestros.register({
+      const farResult = await publicCaller.maestros.register({
         name: "Far Maestro",
         phone: "5544444444",
         trade: "Plomero",
@@ -211,8 +265,12 @@ describe("maestros router", () => {
         longitude: -99.0618,
       });
 
+      // Approve both so they appear in public search (filters by approved)
+      await adminCaller.maestros.approve({ id: nearResult.id });
+      await adminCaller.maestros.approve({ id: farResult.id });
+
       // Search with 15 km radius (far maestro is ~11 km away)
-      const result = await caller.maestros.searchByRadius({
+      const result = await publicCaller.maestros.searchByRadius({
         lat: 19.3467,
         lng: -99.1618,
         radiusKm: 15,
@@ -334,11 +392,13 @@ describe("maestros router", () => {
     });
 
     it("returns maestro with slug and profileUrl when found", async () => {
-      const ctx = createPublicContext();
-      const caller = appRouter.createCaller(ctx);
+      const publicCtx = createPublicContext();
+      const publicCaller = appRouter.createCaller(publicCtx);
+      const adminCtx = createAdminContext();
+      const adminCaller = appRouter.createCaller(adminCtx);
 
       // First register a maestro to ensure there is data
-      const regResult = await caller.maestros.register({
+      const regResult = await publicCaller.maestros.register({
         name: "Slug Test Maestro",
         phone: "5511111111",
         trade: "Plomero",
@@ -347,7 +407,10 @@ describe("maestros router", () => {
         zone: "Coyoacán",
       });
 
-      const result = await caller.maestros.getBySlug({
+      // Approve so getBySlug can find it (filters by approved)
+      await adminCaller.maestros.approve({ id: regResult.id });
+
+      const result = await publicCaller.maestros.getBySlug({
         slug: `slug-test-maestro-${regResult.id}`,
       });
 
@@ -359,18 +422,20 @@ describe("maestros router", () => {
     });
 
     it("returns galleryImages as array when maestro has photos", async () => {
-      const ctx = createPublicContext();
-      const caller = appRouter.createCaller(ctx);
+      const publicCtx = createPublicContext();
+      const publicCaller = appRouter.createCaller(publicCtx);
+      const adminCtx = createAdminContext();
+      const adminCaller = appRouter.createCaller(adminCtx);
 
       // Upload a photo first
-      const uploadResult = await caller.maestros.uploadPhoto({
+      const uploadResult = await publicCaller.maestros.uploadPhoto({
         data: VALID_BASE64_JPEG,
         fileName: "slug_gallery_test.jpg",
         contentType: "image/jpeg",
       });
 
       // Register with gallery
-      const regResult = await caller.maestros.register({
+      const regResult = await publicCaller.maestros.register({
         name: "Gallery Maestro",
         phone: "5522222222",
         trade: "Electricista",
@@ -386,7 +451,10 @@ describe("maestros router", () => {
         ],
       });
 
-      const result = await caller.maestros.getBySlug({
+      // Approve so getBySlug can find it
+      await adminCaller.maestros.approve({ id: regResult.id });
+
+      const result = await publicCaller.maestros.getBySlug({
         slug: `gallery-maestro-${regResult.id}`,
       });
 
@@ -397,3 +465,139 @@ describe("maestros router", () => {
     });
   });
 });
+describe("admin procedures", () => {
+    it("listPending returns only pending maestros for admin", async () => {
+      const ctx = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Register a new maestro (defaults to pending)
+      const reg = await caller.maestros.register({
+        name: "Pending Admin Test",
+        phone: "5566666666",
+        trade: "Plomero",
+        experience: 3,
+        workType: "independiente",
+        zone: "Coyoacán",
+      });
+
+      const result = await caller.maestros.listPending();
+
+      expect(Array.isArray(result)).toBe(true);
+      // The newly registered maestro should be pending
+      const pending = result.find((m) => m.id === reg.id);
+      expect(pending).toBeDefined();
+      expect(pending!.verificationStatus).toBe("pending");
+    });
+
+    it("listPending is forbidden for non-admin users", async () => {
+      const ctx = createUserContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.maestros.listPending()
+      ).rejects.toThrow("You do not have required permission");
+    });
+
+    it("approve changes pending to approved", async () => {
+      const ctx = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Register a pending maestro
+      const reg = await caller.maestros.register({
+        name: "Approve Test Maestro",
+        phone: "5577777777",
+        trade: "Electricista",
+        experience: 5,
+        workType: "independiente",
+        zone: "Roma Norte",
+      });
+
+      // Approve it
+      const result = await caller.maestros.approve({ id: reg.id });
+      expect(result.success).toBe(true);
+
+      // Verify it's now approved
+      const listResult = await caller.maestros.list();
+      const approved = listResult.find((m) => m.id === reg.id);
+      expect(approved).toBeDefined();
+    });
+
+    it("reject changes pending to rejected", async () => {
+      const ctx = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      // Register a pending maestro
+      const reg = await caller.maestros.register({
+        name: "Reject Test Maestro",
+        phone: "5588888888",
+        trade: "Plomero",
+        experience: 2,
+        workType: "empresa",
+        zone: "Tlalpan",
+      });
+
+      // Reject it
+      const result = await caller.maestros.reject({ id: reg.id });
+      expect(result.success).toBe(true);
+
+      // Verify it's now rejected
+      const pending = await caller.maestros.listPending();
+      const rejected = pending.find((m) => m.id === reg.id);
+      expect(rejected).toBeUndefined();
+    });
+
+    it("approve fails for non-existent ID", async () => {
+      const ctx = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.maestros.approve({ id: 99999 })
+      ).rejects.toThrow("Maestro not found");
+    });
+
+    it("stats returns object with counts for admin", async () => {
+      const ctx = createAdminContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.stats();
+
+      expect(result).toHaveProperty("pending");
+      expect(result).toHaveProperty("approved");
+      expect(result).toHaveProperty("rejected");
+      expect(typeof result.pending).toBe("number");
+      expect(typeof result.approved).toBe("number");
+      expect(typeof result.rejected).toBe("number");
+    });
+
+    it("stats is forbidden for non-admin users", async () => {
+      const ctx = createUserContext();
+      const caller = appRouter.createCaller(ctx);
+
+      await expect(
+        caller.maestros.stats()
+      ).rejects.toThrow("You do not have required permission");
+    });
+
+    it("register defaults to pending verification status", async () => {
+      const ctx = createPublicContext();
+      const caller = appRouter.createCaller(ctx);
+
+      const result = await caller.maestros.register({
+        name: "New Pending Maestro",
+        phone: "5599999999",
+        trade: "Albañil",
+        experience: 1,
+        workType: "independiente",
+        zone: "Nezahualcóyotl",
+      });
+
+      expect(result.success).toBe(true);
+      // Verify it's pending in the database
+      const adminCtx = createAdminContext();
+      const adminCaller = appRouter.createCaller(adminCtx);
+      const pending = await adminCaller.maestros.listPending();
+      const found = pending.find((m) => m.id === result.id);
+      expect(found).toBeDefined();
+      expect(found!.verificationStatus).toBe("pending");
+    });
+  });
