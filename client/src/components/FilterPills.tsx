@@ -40,8 +40,8 @@ export default function FilterPills({ activeFilter, setActiveFilter, maestros, a
                 transition-all duration-150 active:scale-[0.97] flex-shrink-0
                 ${
                   isActive
-                    ? "bg-terracotta text-white shadow-sm"
-                    : "bg-card text-foreground border border-border hover:border-terracotta/30 hover:bg-secondary"
+                    ? "bg-navy text-white shadow-sm"
+                    : "bg-card text-foreground border border-border hover:border-navy/30 hover:bg-secondary"
                 }
               `}
             >

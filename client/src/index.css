@@ -42,9 +42,11 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --font-sans: "DM Sans", system-ui, sans-serif;
   --font-serif: "DM Serif Display", Georgia, serif;
-  --color-terracotta: oklch(0.55 0.12 45);
-  --color-terracotta-light: oklch(0.65 0.1 45);
-  --color-terracotta-dark: oklch(0.45 0.1 45);
+  --color-navy: #0E0E55;
+  --color-navy-light: #1B1B7A;
+  --color-navy-dark: #08083A;
+  --color-navy-soft: #EEF2FF;
+  --color-navy-border: #C7D2FE;
   --color-sand: oklch(0.96 0.015 80);
   --color-sand-dark: oklch(0.93 0.02 80);
   --color-emerald-brand: oklch(0.55 0.1 150);
@@ -60,32 +62,32 @@
   --card-foreground: oklch(0.22 0.02 45);
   --popover: oklch(0.97 0.012 80);
   --popover-foreground: oklch(0.22 0.02 45);
-  --primary: oklch(0.55 0.12 45);
-  --primary-foreground: oklch(1 0 0);
+  --primary: #0E0E55;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.95 0.015 80);
   --secondary-foreground: oklch(0.3 0.03 45);
   --muted: oklch(0.94 0.01 80);
   --muted-foreground: oklch(0.5 0.02 45);
   --accent: oklch(0.55 0.1 150);
-  --accent-foreground: oklch(1 0 0);
+  --accent-foreground: #ffffff;
   --destructive: oklch(0.577 0.245 27.325);
   --destructive-foreground: oklch(0.985 0 0);
   --border: oklch(0.9 0.015 80);
   --input: oklch(0.9 0.015 80);
-  --ring: oklch(0.55 0.12 45);
-  --chart-1: oklch(0.65 0.1 45);
+  --ring: #0E0E55;
+  --chart-1: #0E0E55;
   --chart-2: oklch(0.55 0.1 150);
   --chart-3: oklch(0.75 0.14 80);
-  --chart-4: oklch(0.45 0.1 45);
+  --chart-4: #1B1B7A;
   --chart-5: oklch(0.85 0.05 80);
   --sidebar: oklch(0.97 0.012 80);
   --sidebar-foreground: oklch(0.22 0.02 45);
-  --sidebar-accent: oklch(0.93 0.02 80);
-  --sidebar-accent-foreground: oklch(0.22 0.02 45);
+  --sidebar-accent: #EEF2FF;
+  --sidebar-accent-foreground: #0E0E55;
   --sidebar-border: oklch(0.9 0.015 80);
-  --sidebar-ring: oklch(0.55 0.12 45);
-  --sidebar-primary: oklch(0.55 0.12 45);
-  --sidebar-primary-foreground: oklch(1 0 0);
+  --sidebar-ring: #0E0E55;
+  --sidebar-primary: #0E0E55;
+  --sidebar-primary-foreground: #ffffff;
 }
 
 @layer base {
@@ -141,11 +143,11 @@
   }
 
   .warm-shadow {
-    box-shadow: 0 8px 32px oklch(0.55 0.12 45 / 0.08);
+    box-shadow: 0 8px 32px rgb(14 14 85 / 0.08);
   }
 
   .warm-shadow-lg {
-    box-shadow: 0 16px 48px oklch(0.55 0.12 45 / 0.12);
+    box-shadow: 0 16px 48px rgb(14 14 85 / 0.12);
   }
 
   .scrollbar-hide {

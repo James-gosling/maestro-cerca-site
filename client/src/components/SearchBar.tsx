@@ -114,8 +114,8 @@ export default function SearchBar({ query, setQuery, onSelectSuggestion, maestro
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onFocus={() => setIsFocused(true)}
-          placeholder="¿Qué reparación necesitas hoy?"
-          className="w-full pl-12 pr-10 py-4 text-base bg-card border-2 border-border rounded-2xl focus:border-terracotta focus:ring-4 focus:ring-terracotta/10 outline-none transition-all placeholder:text-muted-foreground/50 shadow-sm"
+          placeholder="Ej. Plomero en Zibatá, Electricista en Juriquilla..."
+          className="w-full pl-12 pr-10 py-4 text-base bg-card border-2 border-border rounded-2xl focus:border-navy focus:ring-4 focus:ring-navy/10 outline-none transition-all placeholder:text-mu[...]
         />
         {query && (
           <button
@@ -139,7 +139,7 @@ export default function SearchBar({ query, setQuery, onSelectSuggestion, maestro
           {suggestions.length === 0 && (
             <div className="p-3">
               <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2 px-2 flex items-center gap-1.5">
-                <Flame size={13} className="text-terracotta" />
+                <Flame size={13} className="text-navy" />
                 Reparaciones frecuentes
               </p>
               <div className="flex flex-wrap gap-2">
@@ -168,7 +168,7 @@ export default function SearchBar({ query, setQuery, onSelectSuggestion, maestro
                   <span
                     className={`text-xs font-bold uppercase tracking-wider px-1.5 py-0.5 rounded ${
                       s.type === "worker"
-                        ? "bg-terracotta/10 text-terracotta"
+                        ? "bg-navy/10 text-navy"
                         : s.type === "trade"
                         ? "bg-primary/10 text-primary"
                         : "bg-accent/10 text-emerald-brand"
